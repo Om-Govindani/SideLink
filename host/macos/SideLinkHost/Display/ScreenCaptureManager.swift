@@ -57,7 +57,7 @@ public class ScreenCaptureManager: NSObject {
         }
         
         if let stream = displayStream {
-            stream.stop()
+            SLDisplayStreamStop(stream)
             displayStream = nil
         }
         
@@ -72,18 +72,17 @@ public class ScreenCaptureManager: NSObject {
         // We capture in BiPlanar YpCbCr 8-bit (NV12), which matches VideoToolbox hardware encoder expectations directly.
         let pixelFormat = Int32(kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange)
         
-        let stream = CGDisplayStream(
-            dispatchQueueDisplay: displayID,
-            outputWidth: width,
-            outputHeight: height,
-            pixelFormat: pixelFormat,
-            properties: nil,
-            queue: captureQueue
-        ) { [weak self] status, displayTime, frameBuffer, update in
+        let stream = SLDisplayStreamCreate(
+            displayID,
+            width,
+            height,
+            pixelFormat,
+            captureQueue
+        ) { [weak self] status, displayTime, frameBuffer in
             guard let self = self else { return }
             
             switch status {
-            case .frameComplete:
+            case 0: // CGDisplayStreamFrameStatusFrameComplete
                 if let ioSurface = frameBuffer {
                     var unmanagedPixelBufferOut: Unmanaged<CVPixelBuffer>?
                     let status = CVPixelBufferCreateWithIOSurface(
@@ -97,14 +96,14 @@ public class ScreenCaptureManager: NSObject {
                         self.delegate?.didCaptureFrame(pixelBuffer)
                     }
                 }
-            case .frameIdle:
+            case 1: // CGDisplayStreamFrameStatusFrameIdle
                 // No change in frame content, we can choose to skip or repeat.
                 break
-            case .frameBlank:
+            case 2: // CGDisplayStreamFrameStatusFrameBlank
                 self.logger.debug("Captured a blank frame.")
-            case .stopped:
+            case 3: // CGDisplayStreamFrameStatusStopped
                 self.logger.info("CGDisplayStream capture stopped by system.")
-            @unknown default:
+            default:
                 break
             }
         }
@@ -115,11 +114,11 @@ public class ScreenCaptureManager: NSObject {
         }
         
         self.displayStream = displayStream
-        let err = displayStream.start()
-        if err == .success {
+        let err = SLDisplayStreamStart(displayStream)
+        if err == kCGErrorSuccess {
             logger.info("CGDisplayStream successfully started.")
         } else {
-            logger.fault("Failed to start CGDisplayStream. Error: \(err.rawValue)")
+            logger.fault("Failed to start CGDisplayStream. Error: \(err)")
         }
     }
     
