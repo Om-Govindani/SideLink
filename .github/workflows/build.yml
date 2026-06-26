@@ -1,0 +1,51 @@
+name: Build SideLink
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch: # Allows manual trigger from the GitHub Actions tab
+
+jobs:
+  build-macos:
+    name: Build macOS Host
+    runs-on: macos-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Compile macOS Application
+        run: |
+          chmod +x host/macos/build.sh
+          ./host/macos/build.sh
+
+      - name: Upload macOS Executable
+        uses: actions/upload-artifact@v3
+        with:
+          name: SideLinkHostApp
+          path: host/macos/SideLinkHostApp
+
+  build-android:
+    name: Build Android Client
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Compile APK via Gradle
+        run: |
+          cd client/android
+          gradle assembleDebug
+
+      - name: Upload Android APK
+        uses: actions/upload-artifact@v3
+        with:
+          name: SideLink-Android-APK
+          path: client/android/app/build/outputs/apk/debug/app-debug.apk
