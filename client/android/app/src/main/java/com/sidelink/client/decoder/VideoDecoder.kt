@@ -19,7 +19,7 @@ class VideoDecoder(
 
     fun start() {
         if (isRunning) return
-        Log.i(TAG, "Starting H.264 hardware decoder for ${width}x${height}...")
+        Log.w(TAG, "Starting H.264 hardware decoder for ${width}x${height}...")
 
         try {
             val format = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, width, height)
@@ -43,7 +43,7 @@ class VideoDecoder(
                 start()
             }
             
-            Log.i(TAG, "Hardware decoder started successfully.")
+            Log.w(TAG, "Hardware decoder started successfully.")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to initialize MediaCodec: ${e.message}", e)
         }
@@ -77,7 +77,7 @@ class VideoDecoder(
 
     fun stop() {
         if (!isRunning) return
-        Log.i(TAG, "Stopping decoder session...")
+        Log.w(TAG, "Stopping decoder session...")
         isRunning = false
         
         dequeueThread?.interrupt()
@@ -91,7 +91,7 @@ class VideoDecoder(
             Log.e(TAG, "Error stopping codec: ${e.message}")
         }
         codec = null
-        Log.i(TAG, "Decoder release complete.")
+        Log.w(TAG, "Decoder release complete.")
     }
 
     private fun dequeueLoop() {
@@ -107,7 +107,7 @@ class VideoDecoder(
                     // This forces MediaCodec to draw the decoded frame buffer directly on the GPU Surface texture queue.
                     mediaCodec.releaseOutputBuffer(outputBufferIndex, true)
                 } else if (outputBufferIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
-                    Log.i(TAG, "MediaCodec output format changed: ${mediaCodec.outputFormat}")
+                    Log.w(TAG, "MediaCodec output format changed: ${mediaCodec.outputFormat}")
                 }
             } catch (e: Exception) {
                 if (e is InterruptedException) break

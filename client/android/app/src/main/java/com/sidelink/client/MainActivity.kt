@@ -1,6 +1,8 @@
 package com.sidelink.client
 
+import android.content.pm.ActivityInfo
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.view.View
 import android.view.WindowInsets
@@ -12,20 +14,27 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -71,7 +80,7 @@ class MainActivity : ComponentActivity(), ClientConnectionListener {
             MaterialTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = Color(0xFF121212) // Modern dark background
+                    color = Color(0xFF121212L) // Modern dark background
                 ) {
                     MainScreen()
                 }
@@ -81,6 +90,13 @@ class MainActivity : ComponentActivity(), ClientConnectionListener {
     
     @Composable
     private fun MainScreen() {
+        LaunchedEffect(appState) {
+            requestedOrientation = when (appState) {
+                AppState.STREAMING -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                else -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+            }
+        }
+
         when (appState) {
             AppState.LANDING -> LandingView(
                 onScanClick = { appState = AppState.SCANNING },
@@ -105,15 +121,20 @@ class MainActivity : ComponentActivity(), ClientConnectionListener {
         onScanClick: () -> Unit,
         error: String?
     ) {
+        var isManualMode by remember { mutableStateOf(false) }
+        var manualIp by remember { mutableStateOf("") }
+        var manualPort by remember { mutableStateOf("5230") }
+        var manualSecret by remember { mutableStateOf("") }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
-                        colors = listOf(Color(0xFF1E1E2C), Color(0xFF121212))
+                        colors = listOf(Color(0xFF1E1E2CL), Color(0xFF121212L))
                     )
                 )
-                .padding(24dp),
+                .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
@@ -130,32 +151,122 @@ class MainActivity : ComponentActivity(), ClientConnectionListener {
                 fontSize = 16.sp,
                 color = Color.Gray,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.padding(top = 8dp, bottom = 48dp)
+                modifier = Modifier.padding(top = 8.dp, bottom = if (isManualMode) 16.dp else 48.dp)
             )
             
-            Button(
-                onClick = onScanClick,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF3F51B5)
-                ),
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier
-                    .fillMaxWidth(0.8f)
-                    .height(56dp)
-            ) {
-                Text(
-                    text = "Scan QR to Connect",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Color.White
-                )
+            if (!isManualMode) {
+                Button(
+                    onClick = onScanClick,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF3F51B5L)
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth(0.8f)
+                        .height(56.dp)
+                ) {
+                    Text(
+                        text = "Scan QR to Connect",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color.White
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                TextButton(
+                    onClick = { isManualMode = true }
+                ) {
+                    Text(
+                        text = "Connect Manually",
+                        color = Color(0xFF3F51B5L),
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            } else {
+                Column(
+                    modifier = Modifier.fillMaxWidth(0.8f),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = manualIp,
+                            onValueChange = { manualIp = it },
+                            label = { Text("Mac IP Address", color = Color.Gray) },
+                            textStyle = TextStyle(color = Color.White),
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+                            modifier = Modifier.weight(1.5f)
+                        )
+                        OutlinedTextField(
+                            value = manualPort,
+                            onValueChange = { manualPort = it },
+                            label = { Text("Port", color = Color.Gray) },
+                            textStyle = TextStyle(color = Color.White),
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.weight(0.7f)
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    OutlinedTextField(
+                        value = manualSecret,
+                        onValueChange = { manualSecret = it.uppercase() },
+                        label = { Text("Pairing Code", color = Color.Gray) },
+                        textStyle = TextStyle(color = Color.White),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    
+                    Spacer(modifier = Modifier.height(24.dp))
+                    
+                    Button(
+                        onClick = {
+                            val port = manualPort.toIntOrNull() ?: 5230
+                            startConnection(manualIp.trim(), port, manualSecret.trim())
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF3F51B5L)
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp)
+                    ) {
+                        Text(
+                            text = "Connect",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color.White
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    TextButton(
+                        onClick = { isManualMode = false }
+                    ) {
+                        Text(
+                            text = "Back to QR Scan",
+                            color = Color.Gray,
+                            fontSize = 14.sp
+                        )
+                    }
+                }
             }
             
             if (error != null) {
-                Spacer(modifier = Modifier.height(24dp))
+                Spacer(modifier = Modifier.height(24.dp))
                 Text(
                     text = error,
-                    color = Color(0xFFEF5350),
+                    color = Color(0xFFEF5350L),
                     fontSize = 14.sp,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth(0.8f)
@@ -172,13 +283,13 @@ class MainActivity : ComponentActivity(), ClientConnectionListener {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(24dp),
+                .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            CircularProgressIndicator(color = Color(0xFF3F51B5))
+            CircularProgressIndicator(color = Color(0xFF3F51B5L))
             
-            Spacer(modifier = Modifier.height(24dp))
+            Spacer(modifier = Modifier.height(24.dp))
             
             Text(
                 text = status,
@@ -187,7 +298,7 @@ class MainActivity : ComponentActivity(), ClientConnectionListener {
                 textAlign = TextAlign.Center
             )
             
-            Spacer(modifier = Modifier.height(48dp))
+            Spacer(modifier = Modifier.height(48.dp))
             
             Button(
                 onClick = onCancel,
@@ -214,16 +325,20 @@ class MainActivity : ComponentActivity(), ClientConnectionListener {
         Box(modifier = Modifier.fillMaxSize()) {
             StreamingSurface(
                 onSurfaceCreated = { surface ->
-                    // Initialize and launch hardware decoder on physical surface
+                    // Since the screen is rotating to landscape, compute landscape dimensions
                     val metrics = resources.displayMetrics
-                    val dec = VideoDecoder(surface, metrics.widthPixels, metrics.heightPixels)
+                    val landscapeWidth = maxOf(metrics.widthPixels, metrics.heightPixels)
+                    val landscapeHeight = minOf(metrics.widthPixels, metrics.heightPixels)
+                    
+                    // Initialize and launch hardware decoder on physical surface
+                    val dec = VideoDecoder(surface, landscapeWidth, landscapeHeight)
                     dec.start()
                     decoder = dec
                     
                     // Request Mac host to initialize virtual monitor matching device resolution
                     connection?.configureDisplay(
-                        width = metrics.widthPixels,
-                        height = metrics.heightPixels,
+                        width = landscapeWidth,
+                        height = landscapeHeight,
                         fps = 60
                     )
                 },
@@ -241,6 +356,24 @@ class MainActivity : ComponentActivity(), ClientConnectionListener {
     
     // MARK: - Connection Handlers
     
+    private fun startConnection(ip: String, port: Int, secret: String) {
+        errorMessage = null
+        statusMessage = "Connecting to host..."
+        appState = AppState.CONNECTING
+        
+        try {
+            if (ip.isBlank()) throw Exception("IP address cannot be empty.")
+            if (secret.isBlank()) throw Exception("Pairing code cannot be empty.")
+            
+            connection = ClientConnection(ip, port, secret, this).apply {
+                start()
+            }
+        } catch (e: Exception) {
+            errorMessage = e.message
+            appState = AppState.LANDING
+        }
+    }
+    
     private fun handleScannedUri(uriString: String) {
         errorMessage = null
         statusMessage = "Connecting to host..."
@@ -256,9 +389,7 @@ class MainActivity : ComponentActivity(), ClientConnectionListener {
             val port = uri.getQueryParameter("port")?.toIntOrNull() ?: 5230
             val secret = uri.getQueryParameter("secret") ?: throw Exception("Session key missing from QR.")
             
-            connection = ClientConnection(ip, port, secret, this).apply {
-                start()
-            }
+            startConnection(ip, port, secret)
             
         } catch (e: Exception) {
             errorMessage = e.message

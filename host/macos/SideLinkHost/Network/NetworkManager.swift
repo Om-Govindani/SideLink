@@ -16,7 +16,7 @@ public enum ConnectionState {
 
 public class NetworkManager {
     private let logger = Logger(subsystem: "com.sidelink.host", category: "Network")
-    private let controlPort: UInt16 = 5230
+    public let controlPort: UInt16 = 5230
     private let streamPort: UInt16 = 5231
     
     private var controlListener: NWListener?
@@ -283,8 +283,8 @@ public class NetworkManager {
     // MARK: - Utilities
     
     private func generatePairingSecret() -> String {
-        let chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-        return String((0..<32).map { _ in chars.randomElement()! })
+        let chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+        return String((0..<8).map { _ in chars.randomElement()! })
     }
     
     private func getLocalIPAddress() -> String? {

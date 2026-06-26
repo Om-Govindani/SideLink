@@ -1,0 +1,43 @@
+# Android / Gradle
+.gradle/
+build/
+app/build/
+local.properties
+*.apk
+*.ap_
+.navigation/
+captures/
+.externalNativeBuild/
+.cxx/
+*.keystore
+!debug.keystore
+
+# macOS / Xcode / Swift
+.DS_Store
+SideLinkHostApp
+*.xcuserstate
+xcuserdata/
+*.moved-aside
+DerivedData/
+IPHONEOS_DEPLOYMENT_TARGET
+
+# Node.js / React / Vite
+node_modules/
+dist/
+dist-ssr/
+*.local
+.env
+.env.*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.eslintcache
+.vite/
+
+# Miscellaneous
+.idea/
+.vscode/
+*.log
+tmp/
+temp/

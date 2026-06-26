@@ -4,6 +4,16 @@ import CoreGraphics
 import CoreImage.CIFilterBuiltins
 import OSLog
 
+public enum ResolutionOption: String, CaseIterable, Identifiable {
+    case scaled2x = "Scaled 2x (Retina)"
+    case native = "Native 1x (Tiny)"
+    case res1440x900 = "1440 x 900"
+    case res1920x1080 = "1920 x 1080"
+    case res1280x800 = "1280 x 800"
+    
+    public var id: String { self.rawValue }
+}
+
 @main
 struct SideLinkHostApp: App {
     @StateObject private var controller = HostAppController()
@@ -37,8 +47,11 @@ class HostAppController: NSObject, ObservableObject, NetworkManagerDelegate, Scr
     private var inputInjector: InputInjector?
     
     // Published states for UI
+    @Published var selectedResolution: ResolutionOption = .scaled2x
     @Published var connectionURI: String = ""
     @Published var localIP: String = ""
+    @Published var controlPort: UInt16 = 5230
+    @Published var pairingSecret: String = ""
     @Published var clientStatus: String = "Disconnected"
     @Published var clientInfo: String = ""
     @Published var isStreaming: Bool = false
@@ -50,6 +63,8 @@ class HostAppController: NSObject, ObservableObject, NetworkManagerDelegate, Scr
         
         self.connectionURI = networkManager.connectionURI
         self.localIP = networkManager.localIP
+        self.controlPort = networkManager.controlPort
+        self.pairingSecret = networkManager.pairingSecret
     }
     
     public func startServices() {
@@ -84,13 +99,37 @@ class HostAppController: NSObject, ObservableObject, NetworkManagerDelegate, Scr
     // MARK: - NetworkManagerDelegate
     
     func didConnectClient(resolutionWidth: UInt32, resolutionHeight: UInt32, fps: UInt8) {
-        logger.info("Network handshake successful. Creating virtual screen: \(resolutionWidth)x\(resolutionHeight) @ \(fps) FPS")
+        logger.info("Network handshake successful. Determining target resolution...")
+        
+        var width = resolutionWidth
+        var height = resolutionHeight
+        
+        switch selectedResolution {
+        case .scaled2x:
+            // Scaled 2x Retina: half of the client resolution (round to even for H.264)
+            width = (resolutionWidth / 2) & ~1
+            height = (resolutionHeight / 2) & ~1
+        case .native:
+            width = resolutionWidth
+            height = resolutionHeight
+        case .res1440x900:
+            width = 1440
+            height = 900
+        case .res1920x1080:
+            width = 1920
+            height = 1080
+        case .res1280x800:
+            width = 1280
+            height = 800
+        }
+        
+        logger.info("Selected resolution: \(width)x\(height). Creating virtual screen...")
         
         // 1. Create the virtual display
         let success = displayManager.createDisplay(
             name: "SideLink Monitor",
-            width: resolutionWidth,
-            height: resolutionHeight
+            width: width,
+            height: height
         )
         
         guard success, let displayID = displayManager.displayID else {
@@ -100,7 +139,7 @@ class HostAppController: NSObject, ObservableObject, NetworkManagerDelegate, Scr
         }
         
         // 2. Start H.264 Encoder session
-        guard encoder.startSession(width: Int32(resolutionWidth), height: Int32(resolutionHeight), fps: Int32(fps)) else {
+        guard encoder.startSession(width: Int32(width), height: Int32(height), fps: Int32(fps)) else {
             logger.fault("Failed to initialize hardware encoder. Terminating connection.")
             networkManager.disconnect()
             return
@@ -113,12 +152,12 @@ class HostAppController: NSObject, ObservableObject, NetworkManagerDelegate, Scr
         let capture = ScreenCaptureManager(displayID: displayID)
         capture.delegate = self
         self.captureManager = capture
-        capture.startCapture(width: Int(resolutionWidth), height: Int(resolutionHeight))
+        capture.startCapture(width: Int(width), height: Int(height))
         
         DispatchQueue.main.async {
             self.isStreaming = true
             self.clientStatus = "Connected"
-            self.clientInfo = "Screen size: \(resolutionWidth)x\(resolutionHeight) | FPS: \(fps)"
+            self.clientInfo = "Screen size: \(width)x\(height) | FPS: \(fps)"
         }
     }
     
@@ -197,9 +236,49 @@ struct MainControlView: View {
                             .frame(width: 180, height: 180)
                     }
                     
+                    VStack(spacing: 4) {
+                        Text("Display Resolution:")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(.secondary)
+                        
+                        Picker("", selection: $controller.selectedResolution) {
+                            ForEach(ResolutionOption.allCases) { option in
+                                Text(option.rawValue).tag(option)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .frame(width: 180)
+                    }
+                    .padding(.top, 4)
+                    
                     Text("IP Address: \(controller.localIP)")
                         .font(.system(.caption, design: .monospaced))
                         .foregroundColor(.secondary)
+                    
+                    HStack(spacing: 16) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("PORT")
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundColor(.secondary)
+                            Text("\(controller.controlPort)")
+                                .font(.system(.body, design: .monospaced))
+                                .fontWeight(.semibold)
+                        }
+                        
+                        Divider()
+                            .frame(height: 20)
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("PAIRING CODE")
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundColor(.secondary)
+                            Text(controller.pairingSecret)
+                                .font(.system(.body, design: .monospaced))
+                                .fontWeight(.bold)
+                                .foregroundColor(.accentColor)
+                        }
+                    }
+                    .padding(.top, 4)
                 }
             } else {
                 VStack(spacing: 16) {

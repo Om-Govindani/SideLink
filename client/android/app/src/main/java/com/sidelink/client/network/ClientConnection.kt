@@ -43,7 +43,7 @@ class ClientConnection(
     fun start() {
         connectionJob = scope.launch {
             try {
-                Log.i(TAG, "Connecting to control socket at $hostIp:$controlPort...")
+                Log.w(TAG, "Connecting to control socket at $hostIp:$controlPort...")
                 val cSocket = Socket()
                 cSocket.tcpNoDelay = true // Disable Nagle's algorithm for low-latency
                 cSocket.connect(InetSocketAddress(hostIp, controlPort), 5000)
@@ -52,7 +52,7 @@ class ClientConnection(
                 controlOut = DataOutputStream(cSocket.getOutputStream())
                 controlIn = DataInputStream(cSocket.getInputStream())
                 
-                Log.i(TAG, "Control socket established. Sending pairing handshake...")
+                Log.w(TAG, "Control socket established. Sending pairing handshake...")
                 
                 // 1. Perform Handshake: Send secret
                 val secretBytes = secret.toByteArray(Charsets.UTF_8)
@@ -75,10 +75,10 @@ class ClientConnection(
                     throw Exception("Authentication failed. Pairing secret rejected.")
                 }
                 
-                Log.i(TAG, "Handshake successful. Control paired.")
+                Log.w(TAG, "Handshake successful. Control paired.")
                 
                 // 3. Connect Video Stream Socket
-                Log.i(TAG, "Connecting to stream socket at $hostIp:$streamPort...")
+                Log.w(TAG, "Connecting to stream socket at $hostIp:$streamPort...")
                 val sSocket = Socket()
                 sSocket.tcpNoDelay = true
                 sSocket.connect(InetSocketAddress(hostIp, streamPort), 5000)
@@ -102,7 +102,7 @@ class ClientConnection(
     fun configureDisplay(width: Int, height: Int, fps: Int) {
         scope.launch {
             try {
-                Log.i(TAG, "Requesting display configuration: ${width}x${height} @ $fps FPS")
+                Log.w(TAG, "Requesting display configuration: ${width}x${height} @ $fps FPS")
                 // Length: 1 (Type) + 4 (width) + 4 (height) + 1 (fps) = 10 bytes
                 controlOut?.writeInt(10)
                 controlOut?.writeByte(0x03) // Type 0x03: Configure Display
@@ -140,7 +140,7 @@ class ClientConnection(
     fun close(reason: String = "Closed") {
         if (isClosed) return
         isClosed = true
-        Log.i(TAG, "Closing connection. Reason: $reason")
+        Log.w(TAG, "Closing connection. Reason: $reason")
         
         connectionJob?.cancel()
         
@@ -190,6 +190,7 @@ class ClientConnection(
                 if (length <= 0) continue
                 
                 val type = stream.readByte()
+                Log.w(TAG, "Received control packet of type: $type")
                 val payloadLength = length - 1
                 if (payloadLength > 0) {
                     val payload = ByteArray(payloadLength)

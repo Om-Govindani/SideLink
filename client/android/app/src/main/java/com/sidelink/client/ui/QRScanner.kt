@@ -149,11 +149,10 @@ private class BarcodeAnalyzer(
             scanner.process(image)
                 .addOnSuccessListener { barcodes ->
                     for (barcode in barcodes) {
-                        barcode.rawValue?.let { value ->
-                            if (value.startsWith("sidelink://")) {
-                                onBarcodeScanned(value)
-                                break
-                            }
+                        val value = barcode.rawValue
+                        if (value != null && value.startsWith("sidelink://")) {
+                            onBarcodeScanned(value)
+                            break
                         }
                     }
                 }

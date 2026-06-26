@@ -34,7 +34,7 @@ public class ScreenCaptureManager: NSObject {
     public func startCapture(width: Int, height: Int) {
         logger.info("Starting frame capture pipeline for Display \(self.displayID) (Target: \(width)x\(height))...")
         
-        if #available(macOS 12.3, *) {
+        if #available(macOS 13.0, *) {
             setupScreenCaptureKit(width: width, height: height)
         } else {
             setupCGDisplayStream(width: width, height: height)
@@ -44,7 +44,7 @@ public class ScreenCaptureManager: NSObject {
     public func stopCapture() {
         logger.info("Stopping frame capture pipeline...")
         
-        if #available(macOS 12.3, *) {
+        if #available(macOS 13.0, *) {
             if let stream = scStream as? SCStream {
                 stream.stopCapture { error in
                     if let error = error {
@@ -108,23 +108,24 @@ public class ScreenCaptureManager: NSObject {
             }
         }
         
-        guard let displayStream = stream else {
+        guard let unmanagedStream = stream else {
             logger.fault("Failed to create CGDisplayStream for Display ID \(self.displayID)")
             return
         }
         
+        let displayStream = unmanagedStream.takeRetainedValue()
         self.displayStream = displayStream
         let err = SLDisplayStreamStart(displayStream)
-        if err == kCGErrorSuccess {
+        if err == .success {
             logger.info("CGDisplayStream successfully started.")
         } else {
-            logger.fault("Failed to start CGDisplayStream. Error: \(err)")
+            logger.fault("Failed to start CGDisplayStream. Error: \(err.rawValue)")
         }
     }
     
     // MARK: - Modern ScreenCaptureKit (macOS 12.3+)
     
-    @available(macOS 12.3, *)
+    @available(macOS 13.0, *)
     private func setupScreenCaptureKit(width: Int, height: Int) {
         logger.info("Using modern ScreenCaptureKit capture path.")
         
@@ -180,7 +181,7 @@ public class ScreenCaptureManager: NSObject {
 
 // MARK: - ScreenCaptureKit Helper
 
-@available(macOS 12.3, *)
+@available(macOS 13.0, *)
 private class SCKitOutputHandler: NSObject, SCStreamOutput {
     let callback: (CVPixelBuffer) -> Void
     
