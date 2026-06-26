@@ -15,6 +15,12 @@ if ! command -v java &> /dev/null; then
     exit 1
 fi
 
+# Force JAVA_HOME to JDK 21 since Gradle 8.5 does not support running on JDK 26.
+if [ -d "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home" ]; then
+    export JAVA_HOME="/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home"
+    echo "Forcing JAVA_HOME to JDK 21: $JAVA_HOME"
+fi
+
 # Locate the Android SDK path and configure environment variable
 if [ -z "$ANDROID_HOME" ]; then
     if [ -d "/opt/homebrew/share/android-commandlinetools" ]; then
